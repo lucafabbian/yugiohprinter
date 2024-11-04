@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yu-Gi-Oh! YDK Printer</title>
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+    <meta name="description" content="Import, edit and print your Yu-Gi-Oh deck!">
+
+    <style>
+        /* Normalize */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; line-height: 1.5; color: #333; background: #fff; }
+
+
+        .cards > div {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        @media print {
+            @page { margin: 1cm; }
+            .noprint { display: none !important;  }
+
+            .cards > div img {
+                width: 59mm !important;
+                width: var(--card-width) !important;
+            }
+            .cards > div  {
+                width: calc(59mm * 3) !important;
+                width: calc(var(--card-width) * 3) !important;
+            }
+
+        }
+
+
+        @media screen {
+            .cards {
+                padding: 20px 20px 20px 170px;
+            }
+            .cards > div {
+                max-width: 700px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .cards img {
+                width: 100%;
+            }
+        }
+    </style>
+    <script>
+        window.exampleYDK = `
+            #main
+            40640057
+            46986414
+            72302403
+            44095762
+            23995346
+        `.trim().split('\n').map(l => l.trim()).join('\n')
+
+    </script>
+    <script>
+        const lkey = 'yugiohprinter-data'
+
+        
+        window.data = {
+            ydk: exampleYDK,
+            size: 59,
+            ...JSON.parse(localStorage[lkey] || '{}'),
+        }
+
+
+        window.readData = (input) => {
+            const file = input.files[0];
+            if (file && file.name) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    data.ydk = e.target.result;
+                    input.value = '';
+                };
+                reader.onerror = () => alert('Error reading file');
+                reader.readAsText(file);
+            } else {
+                alert('Please upload a valid .ydk file.');
+            }
+        }
+
+        document.addEventListener('alpine:init', () => {
+            window.data = Alpine.reactive(window.data)
+            const numbers = '123456789'.split('')
+            window.cards = () => window.data.ydk.split('\n').map(l => l.trim().replace(/^0+/, "")).filter(s => numbers.includes(s[0]))
+            Alpine.effect(() => localStorage[lkey] = JSON.stringify(window.data))
+        })
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body x-data>
+    <div class="options noprint" style="position: fixed; top: 0; bottom: 0; left: 0; width: 150px; background-color: #ccc; padding: 20px 16px; display: flex; flex-direction: column;">
+        <label for="ydkpicker" style="font-size: 80%; margin: 4px 0;">Import from .ydk:</label>
+        <input id="ydkpicker" onchange="readData(this)" type="file" accept=".ydk" style="margin-bottom: 8px;">
+        
+        <textarea x-model="data.ydk" style="background-color: #eee; flex: 1 0 auto; margin-bottom: 24px; resize: none; padding: 6px;"></textarea>
+        <label style="font-size: 80%;">Card width, default=59mm:</label>
+        <input type="number" x-model="data.size" style="padding: 4px; margin-bottom: 4px;">
+        <button style="padding: 4px 0;" onclick="window.print()">print (ctrl+p)</button>
+    </div>
+    <div class="cards" :style="'--card-width:' + data.size + 'mm'">
+        <div class="size-mtg">
+            <template  x-for="card in cards()">
+                <img :src="'https://ygoprodeck.com/pics/' + card + '.jpg'" class="print-card">
+            </template>
+        </div>
+    </div>
+</body>
+</html>
